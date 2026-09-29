@@ -1,23 +1,7 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Ubuntu } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { siteConfig } from '@/config/site';
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-  preload: true,
-});
-
-const ubuntu = Ubuntu({
-  weight: ['300', '400', '500', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-ubuntu',
-  preload: true,
-});
 
 export const metadata: Metadata = {
   title: {
@@ -114,8 +98,6 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body
         className={`
-          ${inter.variable}
-          ${ubuntu.variable}
           font-ubuntu
           antialiased
           bg-background

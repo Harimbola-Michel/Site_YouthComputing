@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/lib/utils';
-import { useHomeArticles } from '@/hooks/useHomeData';
+import { useHomeArticles } from '@/hooks/Usehomedata';
 import { buildImageUrl } from '@/lib/imageUtils';
 import type { Article } from '@/types/article.types';
 

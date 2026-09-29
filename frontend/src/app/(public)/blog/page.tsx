@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Sparkles, RefreshCw, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { debounce } from 'lodash';
+import debounce from 'lodash.debounce';
 
 export interface Article {
   id: string;

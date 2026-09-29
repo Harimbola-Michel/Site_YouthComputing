@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, GraduationCap, Building2, Globe } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 // ✅ Import relatif (correct)
-import { useHomeStats } from '../../hooks/useHomeData';
+import { useHomeStats } from '../../hooks/Usehomedata';
 import { AnimatedCounter } from './AnimatedCounter';
 
 const STAT_ITEMS_CONFIG = [

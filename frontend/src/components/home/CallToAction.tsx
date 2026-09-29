@@ -4,7 +4,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useLottieAnimation } from '@/hooks/useLottieAnimation';
+import { useLottieAnimation } from '@/hooks/Uselottieanimation';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 

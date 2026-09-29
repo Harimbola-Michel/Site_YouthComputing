@@ -36,7 +36,7 @@ import Link from 'next/link';
 import { formatDate, cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { Recruitment } from '@/types/recruitment.types';
-import { debounce } from 'lodash';
+import debounce from 'lodash.debounce';
 
 // ─── Helper de date relative (local) ──────────────────────────
 function formatRelativeTime(date: string): string {

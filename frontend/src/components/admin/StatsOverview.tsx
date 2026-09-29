@@ -32,10 +32,24 @@ export function StatsOverview({ stats = {}, loading }: StatsOverviewProps) {
         const value = item.getValue(safeStats);
         const subLabel = item.getSubLabel(safeStats);
         return (
-          <motion.div key={item.key} /* ... */ >
+          <motion.div
+            key={item.key}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
             <Card>
               <CardContent className="p-4">
-                {loading ? ( /* Skeleton */ ) : (
+                {loading ? (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-7 w-7 rounded-full" />
+                    </div>
+                    <Skeleton className="h-7 w-16" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                ) : (
                   <>
                     <div className="flex items-start justify-between">
                       <span className="text-xs font-medium uppercase text-muted-foreground">

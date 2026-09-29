@@ -1,0 +1,14 @@
+node_modules
+.next
+coverage
+test-results
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+*.log
+.DS_Store
+README.md
+tests

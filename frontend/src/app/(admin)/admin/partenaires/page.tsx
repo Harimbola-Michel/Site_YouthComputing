@@ -10,7 +10,7 @@ import { Plus, Search, RefreshCw } from 'lucide-react';
 import { partners } from '@/lib/api';
 import { Partner } from '@/types/partner.types';
 import toast from 'react-hot-toast';
-import { debounce } from 'lodash';
+import debounce from 'lodash.debounce';
 
 export default function PartnersPage() {
   const [data, setData] = useState<Partner[]>([]);
