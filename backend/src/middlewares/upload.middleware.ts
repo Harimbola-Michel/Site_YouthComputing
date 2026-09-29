@@ -3,8 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads');
-const AVATAR_UPLOAD_DIR = path.join(__dirname, '../../uploads/avatars');
+const STORAGE_PATH = process.env.STORAGE_PATH || process.cwd();
+const UPLOAD_DIR = path.join(STORAGE_PATH, 'uploads');
+const AVATAR_UPLOAD_DIR = path.join(STORAGE_PATH, 'uploads/avatars');
 
 [UPLOAD_DIR, AVATAR_UPLOAD_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) {

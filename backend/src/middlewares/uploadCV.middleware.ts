@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-const CV_UPLOAD_DIR = path.join(__dirname, '../../uploads/cvs');
+const CV_UPLOAD_DIR = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads/cvs');
 
 if (!fs.existsSync(CV_UPLOAD_DIR)) {
   fs.mkdirSync(CV_UPLOAD_DIR, { recursive: true });

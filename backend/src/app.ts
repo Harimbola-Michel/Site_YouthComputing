@@ -35,7 +35,7 @@ class App {
    * Vérifie et crée le dossier uploads
    */
   private ensureUploadDirectory(): void {
-    const uploadDir = path.join(__dirname, '../uploads');
+    const uploadDir = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
       logger.info(`📁 Dossier uploads créé : ${uploadDir}`);
@@ -47,9 +47,9 @@ class App {
    */
   private ensurePublicDirectories(): void {
     const publicDirs = [
-      path.join(__dirname, '../public'),
-      path.join(__dirname, '../public/images'),
-      path.join(__dirname, '../public/images/brand'),
+      path.join(process.env.STORAGE_PATH || process.cwd(), 'public'),
+      path.join(process.env.STORAGE_PATH || process.cwd(), 'public/images'),
+      path.join(process.env.STORAGE_PATH || process.cwd(), 'public/images/brand'),
     ];
     publicDirs.forEach((dir) => {
       if (!fs.existsSync(dir)) {
@@ -91,7 +91,8 @@ class App {
     this.app.use(rateLimitConfig);
 
     // ─── Servir les fichiers statiques (uploads) ──────────────
-    const uploadsPath = path.join(__dirname, '../uploads');
+    const storagePath = process.env.STORAGE_PATH || process.cwd();
+    const uploadsPath = path.join(storagePath, 'uploads');
     this.app.use(
       '/uploads',
       express.static(uploadsPath, {
@@ -119,7 +120,7 @@ class App {
 
     // ─── Fallback pour les images manquantes ──────────────────
     this.app.use('/uploads/*', (req, res) => {
-      const defaultImagePath = path.join(__dirname, '../public/images/default-formation.jpg');
+      const defaultImagePath = path.join(storagePath, 'public/images/default-formation.jpg');
       if (fs.existsSync(defaultImagePath)) {
         res.sendFile(defaultImagePath);
       } else {

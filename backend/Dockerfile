@@ -1,11 +1,18 @@
+# =========================
 # Build Stage
-FROM node:20-alpine AS builder
+# =========================
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
+# Prisma et argon2 disposent de binaires précompilés compatibles avec Debian.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm ci
 
 # Copy source
 COPY . .
@@ -16,36 +23,46 @@ RUN npx prisma generate
 # Build application
 RUN npm run build
 
+
+# =========================
 # Production Stage
-FROM node:20-alpine
+# =========================
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
+# Prisma nécessite OpenSSL au runtime également.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install production dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
-# Copy built files
+# Copy built application
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/bootstrap.cjs ./bootstrap.cjs
+
+# Copy Prisma schema and migrations
 COPY --from=builder /app/prisma ./prisma
+
+# Copy generated Prisma Client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy templates
 COPY --from=builder /app/src/templates ./src/templates
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
+RUN groupadd --gid 1001 nodejs && \
+    useradd --uid 1001 --gid nodejs --create-home --shell /usr/sbin/nologin nodejs && \
     chown -R nodejs:nodejs /app
 
 USER nodejs
 
-# Expose port
 EXPOSE 8000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start application
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node bootstrap.cjs"]

@@ -115,7 +115,7 @@ async updateAvatar(userId: string, filePath: string): Promise<User> {
   }
   const user = await this.userRepository.findByIdOrThrow(userId);
   if (user.avatar) {
-    const oldPath = path.join(__dirname, '../../uploads/avatars', path.basename(user.avatar));
+    const oldPath = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads/avatars', path.basename(user.avatar));
     try { fs.unlinkSync(oldPath); } catch (_) {}
   }
   const avatarUrl = `/uploads/avatars/${path.basename(filePath)}`;

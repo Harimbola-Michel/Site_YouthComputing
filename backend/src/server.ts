@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { logger } from './config/logger';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 import App from './app';
 
@@ -29,11 +29,12 @@ async function startServer() {
     console.log(`   JWT_SECRET    : ${process.env.JWT_SECRET ? '✅ Défini' : '❌ Non défini'}`);
     console.log(`   FRONTEND_URL  : ${process.env.FRONTEND_URL || 'http://localhost:3100'}\n`);
 
-    const uploadsPath = path.join(__dirname, '../uploads');
+    const storagePath = process.env.STORAGE_PATH || process.cwd();
+    const uploadsPath = path.join(storagePath, 'uploads');
     if (!fs.existsSync(uploadsPath)) {
       fs.mkdirSync(uploadsPath, { recursive: true });
     }
-    const publicImagesPath = path.join(__dirname, '../public/images');
+    const publicImagesPath = path.join(storagePath, 'public/images');
     if (!fs.existsSync(publicImagesPath)) {
       fs.mkdirSync(publicImagesPath, { recursive: true });
     }

@@ -41,7 +41,7 @@ export class UploadController {
   // Supprimer un fichier
   async deleteFile(req: Request, res: Response) {
     const { id } = req.params;
-    const filePath = path.join(__dirname, '../../uploads', id);
+    const filePath = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads', id);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'Fichier introuvable' });
     }
@@ -51,7 +51,7 @@ export class UploadController {
 
   // Récupérer la liste des fichiers (optionnel)
   async getFiles(req: Request, res: Response) {
-    const dir = path.join(__dirname, '../../uploads');
+    const dir = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads');
     const files = fs.readdirSync(dir).map(filename => ({
       filename,
       url: `/uploads/${filename}`,
@@ -62,7 +62,7 @@ export class UploadController {
   // Récupérer un fichier (optionnel)
   async getFile(req: Request, res: Response) {
     const { id } = req.params;
-    const filePath = path.join(__dirname, '../../uploads', id);
+    const filePath = path.join(process.env.STORAGE_PATH || process.cwd(), 'uploads', id);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'Fichier introuvable' });
     }
