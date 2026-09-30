@@ -9,6 +9,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8000
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3100
+      FRONTEND_URL: http://localhost:3000
+      ENABLE_SOCKET: "true"
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/youth_computing?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379

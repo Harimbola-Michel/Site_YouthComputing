@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  process.env.BACKEND_INTERNAL_URL || 'http://backend:8000/api';
 
 function getToken(request: NextRequest): string | null {
   return (
