@@ -36,7 +36,7 @@ export const env = {
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3100',
   BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
   
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3100,http://localhost:3001,http://localhost:5173',
+  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:3100,http://localhost:3001,http://localhost:5173',
   
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
   

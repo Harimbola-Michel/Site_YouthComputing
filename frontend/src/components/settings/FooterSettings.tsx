@@ -71,8 +71,8 @@ export function FooterSettings() {
         {
           title: 'Services',
           links: [
-            { label: 'Formations', href: '/services/formations' },
-            { label: 'Événements', href: '/services/evenements' },
+            { label: 'Formations', href: '/formations' },
+            { label: 'Événements', href: '/evenements' },
           ],
         },
       ],
