@@ -13,11 +13,20 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Loader2, Lock, CheckCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+// Mêmes règles que le backend (changePasswordValidator)
+const strongPassword = z
+  .string()
+  .min(8, 'Au moins 8 caractères')
+  .regex(/[A-Z]/, 'Au moins une majuscule')
+  .regex(/[a-z]/, 'Au moins une minuscule')
+  .regex(/[0-9]/, 'Au moins un chiffre')
+  .regex(/[^A-Za-z0-9]/, 'Au moins un caractère spécial');
+
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(6, 'Mot de passe actuel requis (minimum 6 caractères)'),
-    newPassword: z.string().min(8, 'Le nouveau mot de passe doit faire au moins 8 caractères'),
-    confirmPassword: z.string().min(8, 'Confirmation requise'),
+    currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+    newPassword: strongPassword,
+    confirmPassword: z.string().min(1, 'Confirmation requise'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',
@@ -26,6 +35,14 @@ const passwordSchema = z
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
+const RULES: { label: string; test: (v: string) => boolean }[] = [
+  { label: '8 caractères minimum', test: (v) => v.length >= 8 },
+  { label: 'Une majuscule', test: (v) => /[A-Z]/.test(v) },
+  { label: 'Une minuscule', test: (v) => /[a-z]/.test(v) },
+  { label: 'Un chiffre', test: (v) => /[0-9]/.test(v) },
+  { label: 'Un caractère spécial', test: (v) => /[^A-Za-z0-9]/.test(v) },
+];
+
 export function PasswordChangeForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -33,13 +50,19 @@ export function PasswordChangeForm() {
     register,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
     watch,
   } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
   });
 
-  const newPassword = watch('newPassword');
+  const newPassword = watch('newPassword') || '';
 
   const onSubmit = async (data: PasswordFormData) => {
     try {
@@ -48,13 +71,34 @@ export function PasswordChangeForm() {
       await users.changePassword({
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
       });
       setSuccess(true);
       toast.success('Mot de passe modifié avec succès ✅');
       reset();
     } catch (error: any) {
-      const msg = error?.response?.data?.message || 'Erreur : vérifiez votre mot de passe actuel';
-      toast.error(msg);
+      // Erreurs de validation renvoyées par le serveur (422)
+      const fieldErrors = error?.formattedErrors as Record<string, string[]> | undefined;
+      let handled = false;
+
+      if (fieldErrors) {
+        (Object.keys(fieldErrors) as string[]).forEach((field) => {
+          if (
+            (field === 'currentPassword' || field === 'newPassword' || field === 'confirmPassword') &&
+            fieldErrors[field]?.[0]
+          ) {
+            setError(field, { type: 'server', message: fieldErrors[field][0] });
+            handled = true;
+          }
+        });
+      }
+
+      if (!handled) {
+        const first = fieldErrors && Object.values(fieldErrors)[0]?.[0];
+        toast.error(
+          first || error?.response?.data?.message || 'Erreur : vérifiez votre mot de passe actuel'
+        );
+      }
       console.error(error);
     } finally {
       setLoading(false);
@@ -88,7 +132,9 @@ export function PasswordChangeForm() {
               className={errors.currentPassword ? 'border-destructive' : ''}
               autoComplete="current-password"
             />
-            {errors.currentPassword && <p className="text-sm text-destructive">{errors.currentPassword.message}</p>}
+            {errors.currentPassword && (
+              <p className="text-sm text-destructive">{errors.currentPassword.message}</p>
+            )}
           </div>
 
           <Separator />
@@ -102,11 +148,17 @@ export function PasswordChangeForm() {
               className={errors.newPassword ? 'border-destructive' : ''}
               autoComplete="new-password"
             />
-            {errors.newPassword && <p className="text-sm text-destructive">{errors.newPassword.message}</p>}
-            {newPassword && newPassword.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                Force : {newPassword.length < 8 ? '❌ Trop court (min 8)' : '✅ Ok'}
-              </p>
+            {errors.newPassword && (
+              <p className="text-sm text-destructive">{errors.newPassword.message}</p>
+            )}
+            {newPassword.length > 0 && (
+              <ul className="space-y-0.5 text-xs text-muted-foreground">
+                {RULES.map((rule) => (
+                  <li key={rule.label}>
+                    {rule.test(newPassword) ? '✅' : '❌'} {rule.label}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
@@ -119,7 +171,9 @@ export function PasswordChangeForm() {
               className={errors.confirmPassword ? 'border-destructive' : ''}
               autoComplete="new-password"
             />
-            {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>}
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+            )}
           </div>
         </CardContent>
 
@@ -134,3 +188,5 @@ export function PasswordChangeForm() {
     </Card>
   );
 }
+
+export default PasswordChangeForm;

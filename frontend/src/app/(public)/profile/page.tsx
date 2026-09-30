@@ -8,8 +8,6 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import {
   User,
-  Mail,
-  Phone,
   Calendar,
   Shield,
   BookOpen,
@@ -20,8 +18,6 @@ import {
   Loader2,
   UserCircle,
   History,
-  Award,
-  CheckCircle,
   Clock,
 } from 'lucide-react';
 import { PageTransition } from '@/components/shared/PageTransition';
@@ -59,11 +55,20 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
+// Mêmes règles que le backend (changePasswordValidator)
+const strongPassword = z
+  .string()
+  .min(8, 'Au moins 8 caractères')
+  .regex(/[A-Z]/, 'Au moins une majuscule')
+  .regex(/[a-z]/, 'Au moins une minuscule')
+  .regex(/[0-9]/, 'Au moins un chiffre')
+  .regex(/[^A-Za-z0-9]/, 'Au moins un caractère spécial');
+
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(8, 'Mot de passe actuel requis'),
-    newPassword: z.string().min(8, 'Le nouveau mot de passe doit contenir au moins 8 caractères'),
-    confirmPassword: z.string().min(8, 'La confirmation est requise'),
+    currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+    newPassword: strongPassword,
+    confirmPassword: z.string().min(1, 'La confirmation est requise'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',
@@ -75,8 +80,9 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 // ─── Composant principal ────────────────────────────────────────
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, logout, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [registrationsData, setRegistrationsData] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -123,9 +129,15 @@ export default function ProfilePage() {
         setAvatarPreview(user.avatar || null);
 
         try {
-          const response = await registrations.getMyRegistrations?.() ?? { data: [] };
-          setRegistrationsData(response.data || []);
-        } catch {
+          const response = await registrations.getMyRegistrations();
+          // Le backend renvoie { success, data: [...] } (ou un objet paginé)
+          const payload = response.data?.data ?? response.data;
+          const list = Array.isArray(payload)
+            ? payload
+            : payload?.items ?? payload?.registrations ?? [];
+          setRegistrationsData(list);
+        } catch (err) {
+          console.error('Erreur chargement inscriptions:', err);
           setRegistrationsData([]);
         }
       } catch (error) {
@@ -137,7 +149,8 @@ export default function ProfilePage() {
     };
 
     fetchData();
-  }, [isAuthenticated, user, profileForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user]);
 
   // ─── Redirection si non authentifié ──────────────────────────
   useEffect(() => {
@@ -148,15 +161,21 @@ export default function ProfilePage() {
 
   // ─── Mise à jour du profil ──────────────────────────────────
   const onProfileSubmit = async (data: ProfileFormData) => {
-    setIsLoading(true);
+    setIsSaving(true);
     try {
-      await users.updateProfile(data);
+      const response = await users.updateProfile(data);
+      const updated = response.data?.data;
+      if (user) {
+        updateUser({ ...user, ...(updated && typeof updated === 'object' ? updated : data) });
+      }
       toast.success('Profil mis à jour avec succès ✅');
       setIsEditing(false);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Erreur lors de la mise à jour');
+      const fieldErrors = error?.formattedErrors as Record<string, string[]> | undefined;
+      const first = fieldErrors && Object.values(fieldErrors)[0]?.[0];
+      toast.error(first || error?.response?.data?.message || 'Erreur lors de la mise à jour');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -167,15 +186,23 @@ export default function ProfilePage() {
       await users.changePassword({
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
       });
       toast.success('Mot de passe modifié avec succès 🔒');
       passwordForm.reset();
       setIsPasswordDialogOpen(false);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Erreur lors du changement de mot de passe');
+      const fieldErrors = error?.formattedErrors as Record<string, string[]> | undefined;
+      const first = fieldErrors && Object.values(fieldErrors)[0]?.[0];
+      toast.error(first || error?.response?.data?.message || 'Erreur lors du changement de mot de passe');
     } finally {
       setIsChangingPassword(false);
     }
+  };
+
+  const handlePasswordDialogChange = (open: boolean) => {
+    setIsPasswordDialogOpen(open);
+    if (!open) passwordForm.reset();
   };
 
   // ─── Upload d’avatar ─────────────────────────────────────────
@@ -184,7 +211,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('L\'image ne doit pas dépasser 2MB');
+      toast.error("L'image ne doit pas dépasser 2MB");
       return;
     }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -203,21 +230,15 @@ export default function ProfilePage() {
         toast.success('Avatar mis à jour ✅');
       }
     } catch {
-      toast.error('Erreur lors de l\'upload');
+      toast.error("Erreur lors de l'upload");
     } finally {
       setIsUploading(false);
     }
   };
 
-  // ─── Déconnexion ─────────────────────────────────────────────
+  // ─── Déconnexion (le contexte gère toast + redirection) ─────
   const handleLogout = async () => {
-    try {
-      await logout();
-      router.push('/');
-      toast.success('Déconnexion réussie 👋');
-    } catch {
-      toast.error('Erreur lors de la déconnexion');
-    }
+    await logout();
   };
 
   // ─── États de chargement ────────────────────────────────────
@@ -235,9 +256,10 @@ export default function ProfilePage() {
   if (!isAuthenticated || !user) return null;
 
   // ─── Rendu ────────────────────────────────────────────────────
-  const initials = user.firstName && user.lastName
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
-    : 'U';
+  const initials =
+    user.firstName && user.lastName
+      ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
+      : 'U';
 
   const stats = {
     total: registrationsData.length,
@@ -245,7 +267,11 @@ export default function ProfilePage() {
     pending: registrationsData.filter((r) => r.status === 'PENDING' || r.status === 'CONFIRMED').length,
   };
 
-  const avatarSrc = avatarPreview ? buildImageUrl(avatarPreview) : user.avatar ? buildImageUrl(user.avatar) : null;
+  const avatarSrc = avatarPreview
+    ? buildImageUrl(avatarPreview)
+    : user.avatar
+    ? buildImageUrl(user.avatar)
+    : null;
 
   return (
     <PageTransition>
@@ -259,7 +285,10 @@ export default function ProfilePage() {
             className="mb-8"
           >
             <h1 className="font-ubuntu text-3xl font-bold md:text-4xl">
-              Mon <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Profil</span>
+              Mon{' '}
+              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Profil
+              </span>
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
               Gérez vos informations personnelles et suivez vos inscriptions.
@@ -413,10 +442,12 @@ export default function ProfilePage() {
                               id="firstName"
                               placeholder="Jean"
                               {...profileForm.register('firstName')}
-                              disabled={!isEditing || isLoading}
+                              disabled={!isEditing || isSaving}
                             />
                             {profileForm.formState.errors.firstName && (
-                              <p className="text-sm text-destructive">{profileForm.formState.errors.firstName.message}</p>
+                              <p className="text-sm text-destructive">
+                                {profileForm.formState.errors.firstName.message}
+                              </p>
                             )}
                           </div>
                           <div className="space-y-1.5">
@@ -425,10 +456,12 @@ export default function ProfilePage() {
                               id="lastName"
                               placeholder="Dupont"
                               {...profileForm.register('lastName')}
-                              disabled={!isEditing || isLoading}
+                              disabled={!isEditing || isSaving}
                             />
                             {profileForm.formState.errors.lastName && (
-                              <p className="text-sm text-destructive">{profileForm.formState.errors.lastName.message}</p>
+                              <p className="text-sm text-destructive">
+                                {profileForm.formState.errors.lastName.message}
+                              </p>
                             )}
                           </div>
                         </div>
@@ -445,10 +478,12 @@ export default function ProfilePage() {
                             id="phone"
                             placeholder="034 12 345 67"
                             {...profileForm.register('phone')}
-                            disabled={!isEditing || isLoading}
+                            disabled={!isEditing || isSaving}
                           />
                           {profileForm.formState.errors.phone && (
-                            <p className="text-sm text-destructive">{profileForm.formState.errors.phone.message}</p>
+                            <p className="text-sm text-destructive">
+                              {profileForm.formState.errors.phone.message}
+                            </p>
                           )}
                         </div>
 
@@ -459,20 +494,31 @@ export default function ProfilePage() {
                             placeholder="Parlez-nous un peu de vous..."
                             rows={3}
                             {...profileForm.register('bio')}
-                            disabled={!isEditing || isLoading}
+                            disabled={!isEditing || isSaving}
                           />
                           {profileForm.formState.errors.bio && (
-                            <p className="text-sm text-destructive">{profileForm.formState.errors.bio.message}</p>
+                            <p className="text-sm text-destructive">
+                              {profileForm.formState.errors.bio.message}
+                            </p>
                           )}
                         </div>
 
                         {isEditing && (
                           <div className="flex gap-2 pt-2">
-                            <Button type="submit" disabled={isLoading} className="gap-2">
-                              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            <Button type="submit" disabled={isSaving} className="gap-2">
+                              {isSaving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Save className="h-4 w-4" />
+                              )}
                               Enregistrer
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isLoading}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setIsEditing(false)}
+                              disabled={isSaving}
+                            >
                               Annuler
                             </Button>
                           </div>
@@ -505,55 +551,58 @@ export default function ProfilePage() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {registrationsData.map((reg) => (
-                            <div
-                              key={reg.id}
-                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
-                            >
-                              <div>
-                                <p className="font-medium">{reg.formation?.title || 'Formation'}</p>
-                                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1">
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3.5 w-3.5" />
-                                    {formatDate(reg.createdAt)}
-                                  </span>
-                                  {reg.formationSession && (
+                          {registrationsData.map((reg) => {
+                            const session = reg.session ?? reg.formationSession;
+                            return (
+                              <div
+                                key={reg.id}
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border p-4 transition-colors hover:bg-muted/30"
+                              >
+                                <div>
+                                  <p className="font-medium">{reg.formation?.title || 'Formation'}</p>
+                                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1">
                                     <span className="flex items-center gap-1">
-                                      <Clock className="h-3.5 w-3.5" />
-                                      {formatDate(reg.formationSession.startDate)}
+                                      <Calendar className="h-3.5 w-3.5" />
+                                      {formatDate(reg.createdAt)}
                                     </span>
+                                    {session?.startDate && (
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {formatDate(session.startDate)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <Badge
+                                    variant="secondary"
+                                    className={cn(
+                                      reg.status === 'CONFIRMED' && 'bg-green-500/10 text-green-600',
+                                      reg.status === 'PENDING' && 'bg-yellow-500/10 text-yellow-600',
+                                      reg.status === 'CANCELLED' && 'bg-red-500/10 text-red-600',
+                                      reg.status === 'COMPLETED' && 'bg-blue-500/10 text-blue-600'
+                                    )}
+                                  >
+                                    {reg.status === 'CONFIRMED' && 'Confirmée'}
+                                    {reg.status === 'PENDING' && 'En attente'}
+                                    {reg.status === 'CANCELLED' && 'Annulée'}
+                                    {reg.status === 'COMPLETED' && 'Terminée'}
+                                  </Badge>
+                                  {reg.paymentStatus && (
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        reg.paymentStatus === 'PAID' && 'border-green-500 text-green-600',
+                                        reg.paymentStatus === 'PENDING' && 'border-yellow-500 text-yellow-600'
+                                      )}
+                                    >
+                                      {reg.paymentStatus === 'PAID' ? 'Payé' : 'En attente'}
+                                    </Badge>
                                   )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    reg.status === 'CONFIRMED' && 'bg-green-500/10 text-green-600',
-                                    reg.status === 'PENDING' && 'bg-yellow-500/10 text-yellow-600',
-                                    reg.status === 'CANCELLED' && 'bg-red-500/10 text-red-600',
-                                    reg.status === 'COMPLETED' && 'bg-blue-500/10 text-blue-600'
-                                  )}
-                                >
-                                  {reg.status === 'CONFIRMED' && 'Confirmée'}
-                                  {reg.status === 'PENDING' && 'En attente'}
-                                  {reg.status === 'CANCELLED' && 'Annulée'}
-                                  {reg.status === 'COMPLETED' && 'Terminée'}
-                                </Badge>
-                                {reg.paymentStatus && (
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(
-                                      reg.paymentStatus === 'PAID' && 'border-green-500 text-green-600',
-                                      reg.paymentStatus === 'PENDING' && 'border-yellow-500 text-yellow-600'
-                                    )}
-                                  >
-                                    {reg.paymentStatus === 'PAID' ? 'Payé' : 'En attente'}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </CardContent>
@@ -565,7 +614,7 @@ export default function ProfilePage() {
         </div>
 
         {/* ─── Dialog : Changement de mot de passe ────────────── */}
-        <AlertDialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <AlertDialog open={isPasswordDialogOpen} onOpenChange={handlePasswordDialogChange}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Changer le mot de passe</AlertDialogTitle>
@@ -575,50 +624,70 @@ export default function ProfilePage() {
             </AlertDialogHeader>
             <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="currentPassword" className="text-sm font-medium">Mot de passe actuel *</label>
+                <label htmlFor="dialog-currentPassword" className="text-sm font-medium">
+                  Mot de passe actuel *
+                </label>
                 <Input
-                  id="currentPassword"
+                  id="dialog-currentPassword"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   {...passwordForm.register('currentPassword')}
                   disabled={isChangingPassword}
                 />
                 {passwordForm.formState.errors.currentPassword && (
-                  <p className="text-sm text-destructive">{passwordForm.formState.errors.currentPassword.message}</p>
+                  <p className="text-sm text-destructive">
+                    {passwordForm.formState.errors.currentPassword.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="newPassword" className="text-sm font-medium">Nouveau mot de passe *</label>
+                <label htmlFor="dialog-newPassword" className="text-sm font-medium">
+                  Nouveau mot de passe *
+                </label>
                 <Input
-                  id="newPassword"
+                  id="dialog-newPassword"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   {...passwordForm.register('newPassword')}
                   disabled={isChangingPassword}
                 />
                 {passwordForm.formState.errors.newPassword && (
-                  <p className="text-sm text-destructive">{passwordForm.formState.errors.newPassword.message}</p>
+                  <p className="text-sm text-destructive">
+                    {passwordForm.formState.errors.newPassword.message}
+                  </p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  8 caractères minimum, avec majuscule, minuscule, chiffre et caractère spécial.
+                </p>
               </div>
               <div className="space-y-1.5">
-                <label htmlFor="confirmPassword" className="text-sm font-medium">Confirmer *</label>
+                <label htmlFor="dialog-confirmPassword" className="text-sm font-medium">
+                  Confirmer *
+                </label>
                 <Input
-                  id="confirmPassword"
+                  id="dialog-confirmPassword"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   {...passwordForm.register('confirmPassword')}
                   disabled={isChangingPassword}
                 />
                 {passwordForm.formState.errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{passwordForm.formState.errors.confirmPassword.message}</p>
+                  <p className="text-sm text-destructive">
+                    {passwordForm.formState.errors.confirmPassword.message}
+                  </p>
                 )}
               </div>
               <AlertDialogFooter className="mt-4">
-                <AlertDialogCancel disabled={isChangingPassword}>Annuler</AlertDialogCancel>
-                <AlertDialogAction type="submit" disabled={isChangingPassword}>
+                <AlertDialogCancel type="button" disabled={isChangingPassword}>
+                  Annuler
+                </AlertDialogCancel>
+                <Button type="submit" disabled={isChangingPassword}>
                   {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Changer
-                </AlertDialogAction>
+                </Button>
               </AlertDialogFooter>
             </form>
           </AlertDialogContent>
