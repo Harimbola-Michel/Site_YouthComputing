@@ -16,14 +16,16 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       STORAGE_PATH: /app
+      RUN_SEED: "true"
+      SEED_ADMIN_PASSWORD: Admin@2026!
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./backups:/app/backups
-      - ./logs:/app/logs
+      - backups_data:/app/backups
+      - logs_data:/app/logs
       - uploads_data:/app/uploads
     networks:
       - yc-network
@@ -88,3 +90,5 @@ volumes:
   redis_data:
   pgadmin_data:
   uploads_data:
+  backups_data:
+  logs_data:

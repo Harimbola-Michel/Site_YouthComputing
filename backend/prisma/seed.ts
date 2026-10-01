@@ -1,7 +1,5 @@
-// prisma/seed.ts
-
 import { PrismaClient, Role, UserStatus, ArticleStatus, ProjectStatus, EventType } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '../src/utils/password';
 
 const prisma = new PrismaClient();
 
@@ -9,9 +7,11 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // =====================
-  // 1. Super Admin
+  // 1. Super Admin + Admin de test
   // =====================
-  const hashedPassword = await bcrypt.hash('Admin@2026!', 12);
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin@2026!';
+  const hashedPassword = await hashPassword(seedPassword);
+
   const superAdmin = await prisma.user.upsert({
     where: { email: 'admin@youthcomputing.mg' },
     update: {
@@ -34,12 +34,10 @@ async function main() {
   });
   console.log('✅ Super Admin:', superAdmin.email);
 
-  // Admin de test
-  const adminPassword = await bcrypt.hash('Admin@2026!', 12);
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin2@youthcomputing.mg' },
     update: {
-      password_hash: adminPassword,
+      password_hash: hashedPassword,
       firstName: 'Admin',
       lastName: 'Test',
       role: Role.ADMIN,
@@ -48,7 +46,7 @@ async function main() {
     },
     create: {
       email: 'admin2@youthcomputing.mg',
-      password_hash: adminPassword,
+      password_hash: hashedPassword,
       firstName: 'Admin',
       lastName: 'Test',
       role: Role.ADMIN,
@@ -66,7 +64,7 @@ async function main() {
       title: 'Développement Web avec Next.js',
       slug: 'dev-web-nextjs',
       description: 'Maîtrisez le framework Next.js pour créer des applications web modernes et performantes.',
-      objectives: 'Apprendre les bases de Next.js, le rendu SSR/SSG, le routing, et l\'optimisation.',
+      objectives: "Apprendre les bases de Next.js, le rendu SSR/SSG, le routing, et l'optimisation.",
       prerequisites: 'Connaissances de base en JavaScript et React.',
       duration: '8 semaines',
       level: 'Intermédiaire',
@@ -76,10 +74,10 @@ async function main() {
       maxParticipants: 20,
     },
     {
-      title: 'Introduction à l\'Intelligence Artificielle',
+      title: "Introduction à l'Intelligence Artificielle",
       slug: 'intro-ia',
-      description: 'Découvrez les concepts fondamentaux de l\'intelligence artificielle et du machine learning.',
-      objectives: 'Comprendre les bases de l\'IA, les algorithmes de ML, et les applications pratiques.',
+      description: "Découvrez les concepts fondamentaux de l'intelligence artificielle et du machine learning.",
+      objectives: "Comprendre les bases de l'IA, les algorithmes de ML, et les applications pratiques.",
       prerequisites: 'Aucun prérequis spécifique.',
       duration: '6 semaines',
       level: 'Débutant',
@@ -91,7 +89,7 @@ async function main() {
     {
       title: 'Programmation Python pour Data Science',
       slug: 'python-data-science',
-      description: 'Apprenez à utiliser Python pour l\'analyse de données et la science des données.',
+      description: "Apprenez à utiliser Python pour l'analyse de données et la science des données.",
       objectives: 'Maîtriser les bibliothèques Pandas, NumPy, Matplotlib, et scikit-learn.',
       prerequisites: 'Bases de la programmation.',
       duration: '10 semaines',
@@ -177,10 +175,10 @@ async function main() {
   // =====================
   const projects = [
     {
-      title: 'Plateforme d\'Apprentissage en Ligne',
+      title: "Plateforme d'Apprentissage en Ligne",
       slug: 'plateforme-apprentissage',
-      description: 'Une plateforme interactive pour l\'apprentissage des NTIC avec des cours en ligne et des exercices pratiques.',
-      objectives: 'Rendre l\'éducation numérique accessible à tous.',
+      description: "Une plateforme interactive pour l'apprentissage des NTIC avec des cours en ligne et des exercices pratiques.",
+      objectives: "Rendre l'éducation numérique accessible à tous.",
       impact: 'Plus de 500 étudiants formés depuis le lancement.',
       technologies: ['React', 'Node.js', 'MongoDB', 'Docker'],
       images: ['project1.jpg', 'project2.jpg'],
@@ -193,7 +191,7 @@ async function main() {
       title: 'Application Mobile de Santé',
       slug: 'app-mobile-sante',
       description: 'Une application mobile pour le suivi de la santé et la télémédecine dans les zones rurales.',
-      objectives: 'Améliorer l\'accès aux soins de santé.',
+      objectives: "Améliorer l'accès aux soins de santé.",
       impact: 'Utilisée par 10 000 personnes dans 3 régions.',
       technologies: ['Flutter', 'Firebase', 'TensorFlow'],
       images: ['project3.jpg', 'project4.jpg'],
@@ -221,7 +219,7 @@ async function main() {
     update: {
       role: 'Fondateur & Président',
       department: 'Direction',
-      bio: 'Passionné par les NTIC et l\'éducation numérique.',
+      bio: "Passionné par les NTIC et l'éducation numérique.",
       displayOrder: 1,
       isActive: true,
     },
@@ -229,7 +227,7 @@ async function main() {
       userId: superAdmin.id,
       role: 'Fondateur & Président',
       department: 'Direction',
-      bio: 'Passionné par les NTIC et l\'éducation numérique.',
+      bio: "Passionné par les NTIC et l'éducation numérique.",
       displayOrder: 1,
       isActive: true,
     },
@@ -237,7 +235,7 @@ async function main() {
   console.log('✅ Équipe créée');
 
   // =====================
-  // 6. Événements (CORRIGÉ : suppression de createdBy)
+  // 6. Événements
   // =====================
   const events = [
     {
@@ -250,15 +248,13 @@ async function main() {
       time: '08:00 - 18:00',
       location: 'Antananarivo, Madagascar',
       isPublished: true,
-      // createdBy supprimé (n'existe pas dans le modèle)
-      // On peut ajouter d'autres champs optionnels si nécessaire
       maxAttendees: 100,
       isPaid: false,
     },
     {
       title: 'Conférence Tech & Innovation',
       slug: 'conf-tech-innovation',
-      description: 'Une conférence sur les tendances technologiques et l\'innovation à Madagascar.',
+      description: "Une conférence sur les tendances technologiques et l'innovation à Madagascar.",
       eventType: EventType.CONFERENCE,
       startDate: new Date('2025-04-10T09:00:00Z'),
       endDate: new Date('2025-04-11T17:00:00Z'),
