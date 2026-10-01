@@ -1,6 +1,7 @@
 // lib/imageUtils.ts
+import { BACKEND_URL } from './env';
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+const API_BASE_URL = BACKEND_URL;
 
 // Placeholder SVG
 const PLACEHOLDER_IMAGE =

@@ -1,8 +1,7 @@
 // src/lib/api.ts – Version finale avec exports
 import axios from 'axios';
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './auth-tokens';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+import { API_URL } from './env';
 
 export const api = axios.create({
   baseURL: API_URL,

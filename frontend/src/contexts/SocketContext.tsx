@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useNotificationStore } from '@/store/notification.store';
 import type { NotificationPayload } from '@/types';
 import toast from 'react-hot-toast';
+import { SOCKET_URL } from '@/lib/env';
 
 // ============================================================
 // TYPES
@@ -44,8 +45,6 @@ export interface SocketContextType {
 // CONFIG — Safe defaults
 // ============================================================
 const ENABLE_SOCKET = process.env.NEXT_PUBLIC_ENABLE_SOCKET !== 'false';
-const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAY = 2000;
 const CONNECTION_TIMEOUT = 8000;

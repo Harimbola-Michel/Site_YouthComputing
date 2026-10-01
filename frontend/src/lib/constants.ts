@@ -1,7 +1,9 @@
+import { API_URL } from './env';
+
+export const API_BASE_URL = API_URL;
+
 export const APP_NAME = 'Youth Computing';
 export const APP_VERSION = '1.0.0';
-
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export const STORAGE_KEYS = {
   ACCESS_TOKEN: 'accessToken',
